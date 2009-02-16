@@ -51,7 +51,7 @@
 -export([
     stats/0, stats/1, version/0, getkey/1, delete/2, set/4, add/4, replace/2,
     replace/4, cas/5, set/2, flushall/0, flushall/1, verbosity/1, add/2,
-    cas/3, getskey/1, connect/0, connect/2, delete/1, disconnect/0
+    cas/3, getskey/1, connect/0, connect/1, connect/2, delete/1, disconnect/0
 ]).
 
 %% gen_server callbacks
@@ -231,6 +231,10 @@ cas(Key, Flag, ExpTime, CasUniq, Value) ->
 %% @doc connect to memcached with defaults
 connect() ->
 	connect(?DEFAULT_HOST, ?DEFAULT_PORT).
+
+%% @doc connect to memcached with default port
+connect(Host) ->
+    connect(Host, ?DEFAULT_PORT).
 
 %% @doc connect to memcached
 connect(Host, Port) ->
