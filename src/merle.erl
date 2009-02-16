@@ -296,7 +296,7 @@ handle_call({delete, {Key, Time}}, _From, Socket) ->
     {reply, Reply, Socket};
 
 handle_call({set, {Key, Flag, ExpTime, Value}}, _From, Socket) ->
-	Bin = term_to_binary(Value),
+	Bin = to_binary(Value),
 	Bytes = integer_to_list(size(Bin)),
     Reply = send_storage_cmd(
         Socket,
@@ -308,7 +308,7 @@ handle_call({set, {Key, Flag, ExpTime, Value}}, _From, Socket) ->
     {reply, Reply, Socket};
 
 handle_call({add, {Key, Flag, ExpTime, Value}}, _From, Socket) ->
-	Bin = term_to_binary(Value),
+	Bin = to_binary(Value),
 	Bytes = integer_to_list(size(Bin)),
     Reply = send_storage_cmd(
         Socket,
@@ -320,7 +320,7 @@ handle_call({add, {Key, Flag, ExpTime, Value}}, _From, Socket) ->
     {reply, Reply, Socket};
 
 handle_call({replace, {Key, Flag, ExpTime, Value}}, _From, Socket) ->
-	Bin = term_to_binary(Value),
+	Bin = to_binary(Value),
 	Bytes = integer_to_list(size(Bin)),
     Reply = send_storage_cmd(
         Socket,
@@ -333,7 +333,7 @@ handle_call({replace, {Key, Flag, ExpTime, Value}}, _From, Socket) ->
     {reply, Reply, Socket};
 
 handle_call({cas, {Key, Flag, ExpTime, CasUniq, Value}}, _From, Socket) ->
-	Bin = term_to_binary(Value),
+	Bin = to_binary(Value),
 	Bytes = integer_to_list(size(Bin)),
     Reply = send_storage_cmd(
         Socket,
@@ -451,4 +451,16 @@ get_data(Socket, Bin, Bytes, Len) when Len < Bytes + 7->
     end;
 get_data(_, Data, Bytes, _) ->
 	<<Bin:Bytes/binary, "\r\nEND\r\n">> = Data,
-    binary_to_term(Bin).
+    try
+        binary_to_term(Bin)
+    catch
+        _:_ ->
+            Bin
+    end.
+
+%% @private
+%% @doc convert to binary all terms but binary
+to_binary(X) when is_binary(X) ->
+    X;
+to_binary(X) ->
+    term_to_binary(X).
