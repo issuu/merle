@@ -80,14 +80,14 @@ verbosity(Args) when is_integer(Args) ->
 verbosity(Args)->
 	case gen_server2:call(?SERVER, {verbosity, {Args}}) of
 		["OK"] -> ok;
-		[X] -> X
+		RETURN -> RETURN
 	end.
 
 %% @doc invalidate all existing items immediately
 flushall() ->
 	case gen_server2:call(?SERVER, {flushall}) of
 		["OK"] -> ok;
-		[X] -> X
+		RETURN -> RETURN
 	end.
 
 %% @doc invalidate all existing items based on the expire time argument
@@ -96,7 +96,7 @@ flushall(Delay) when is_integer(Delay) ->
 flushall(Delay) ->
 	case gen_server2:call(?SERVER, {flushall, {Delay}}) of
 		["OK"] -> ok;
-		[X] -> X
+		RETURN -> RETURN
 	end.
 
 %% @doc retrieve value based off of key
@@ -105,7 +105,7 @@ getkey(Key) when is_atom(Key) ->
 getkey(Key) ->
 	case gen_server2:call(?SERVER, {getkey,{Key}}) of
 	    ["END"] -> undefined;
-	    [X] -> X
+	    RETURN -> RETURN
 	end.
 
 %% @doc retrieve value based off of key for use with cas
@@ -114,7 +114,7 @@ getskey(Key) when is_atom(Key) ->
 getskey(Key) ->
 	case gen_server2:call(?SERVER, {getskey,{Key}}) of
 	    ["END"] -> undefined;
-	    [X] -> X
+	    RETURN -> RETURN
 	end.
 
 %% @doc delete a key
@@ -129,7 +129,7 @@ delete(Key, Time) ->
 	case gen_server2:call(?SERVER, {delete, {Key, Time}}) of
 		["DELETED"] -> ok;
 		["NOT_FOUND"] -> not_found;
-		[X] -> X
+		RETURN -> RETURN
 	end.
 
 %% Time is the amount of time in seconds
@@ -169,7 +169,7 @@ set(Key, Flag, ExpTime, Value) ->
 	case gen_server2:call(?SERVER, {set, {Key, Flag, ExpTime, Value}}) of
 	    ["STORED"] -> ok;
 	    ["NOT_STORED"] -> not_stored;
-	    [X] -> X
+	    RETURN -> RETURN
 	end.
 
 %% @doc Store a key/value pair if it doesn't already exist.
@@ -187,7 +187,7 @@ add(Key, Flag, ExpTime, Value) ->
 	case gen_server2:call(?SERVER, {add, {Key, Flag, ExpTime, Value}}) of
 	    ["STORED"] -> ok;
 	    ["NOT_STORED"] -> not_stored;
-	    [X] -> X
+	    RETURN -> RETURN
 	end.
 
 %% @doc Replace an existing key/value pair.
@@ -205,7 +205,7 @@ replace(Key, Flag, ExpTime, Value) ->
 	case gen_server2:call(?SERVER, {replace, {Key, Flag, ExpTime, Value}}) of
 	    ["STORED"] -> ok;
 	    ["NOT_STORED"] -> not_stored;
-	    [X] -> X
+	    RETURN -> RETURN
 	end.
 
 %% @doc Store a key/value pair if possible.
@@ -225,7 +225,7 @@ cas(Key, Flag, ExpTime, CasUniq, Value) ->
 	case gen_server2:call(?SERVER, {cas, {Key, Flag, ExpTime, CasUniq, Value}}) of
 	    ["STORED"] -> ok;
 	    ["NOT_STORED"] -> not_stored;
-	    [X] -> X
+	    RETURN -> RETURN
 	end.
 
 %% @doc connect to memcached with defaults
