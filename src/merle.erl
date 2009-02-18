@@ -312,6 +312,8 @@ send_generic_cmd(Socket, Cmd, Args) when is_list(Args) ->
 send_generic_cmd(Socket, Cmd, Args) ->
     send_generic_cmd(Socket, Cmd, [Args]).
 
+send_generic_cmd(Socket, Cmd, Args, Value) when is_binary(Value) =:= false ->
+    send_generic_cmd(Socket, Cmd, Args, to_binary(Value));
 send_generic_cmd(Socket, Cmd, Args, Value) when is_list(Args), is_binary(Value) ->
     Bytes = size(Value),
     {A, B} = lists:split(3, Args),
@@ -363,9 +365,15 @@ recv_complex_reply(SocketReader, Tail) when is_function(SocketReader) ->
     end.
 
 %% @private
-%% @doc convert to binary all terms but binary
+%% @doc convert to binary but not oversmart it
 to_binary(X) when is_binary(X) ->
     X;
+to_binary(X) when is_list(X) ->
+    list_to_binary(X);
+to_binary(X) when is_integer(X) ->
+    to_binary(integer_to_list(X));
+to_binary(X) when is_atom(X) ->
+    atom_to_list(X);
 to_binary(X) ->
     term_to_binary(X).
 
