@@ -38,6 +38,7 @@
 -author("Joe Williams <joe@joetify.com>").
 -version("Version: 0.2").
 
+-define(DEFAULT_FLAG, 0).
 -define(SERVER, ?MODULE).
 -define(TIMEOUT, 5000).
 -define(RANDOM_MAX, 65535).
@@ -137,8 +138,7 @@ delete(Key, Time) ->
 
 %% @doc Store a key/value pair.
 set(Key, Value) ->
-    Flag = random:uniform(?RANDOM_MAX),
-    set(Key, integer_to_list(Flag), "0", Value).
+    set(Key, ?DEFAULT_FLAG, 0, Value).
 
 set(Key, Flag, ExpTime, Value) ->
 	case gen_server2:call(?SERVER, {set, [Key, Flag, ExpTime], Value}) of
@@ -149,8 +149,7 @@ set(Key, Flag, ExpTime, Value) ->
 
 %% @doc Store a key/value pair if it doesn't already exist.
 add(Key, Value) ->
-	Flag = random:uniform(?RANDOM_MAX),
-	add(Key, integer_to_list(Flag), "0", Value).
+    add(Key, ?DEFAULT_FLAG, 0, Value).
 
 add(Key, Flag, ExpTime, Value) ->
 	case gen_server2:call(?SERVER, {add, [Key, Flag, ExpTime], Value}) of
@@ -161,8 +160,7 @@ add(Key, Flag, ExpTime, Value) ->
 
 %% @doc Replace an existing key/value pair.
 replace(Key, Value) ->
-	Flag = random:uniform(?RANDOM_MAX),
-	replace(Key, integer_to_list(Flag), "0", Value).
+    replace(Key, ?DEFAULT_FLAG, 0, Value).
 
 replace(Key, Flag, ExpTime, Value) when is_atom(Key) ->
 	replace(atom_to_list(Key), Flag, ExpTime, Value);
@@ -195,8 +193,7 @@ prepend(Key, Value) ->
 
 %% @doc Store a key/value pair if possible.
 cas(Key, CasUniq, Value) ->
-	Flag = random:uniform(?RANDOM_MAX),
-	cas(Key, integer_to_list(Flag), "0", CasUniq, Value).
+    cas(Key, ?DEFAULT_FLAG, 0, CasUniq, Value).
 
 cas(Key, Flag, ExpTime, CasUniq, Value) when is_atom(Key) ->
 	cas(atom_to_list(Key), Flag, ExpTime, CasUniq, Value);
