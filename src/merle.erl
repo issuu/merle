@@ -51,7 +51,8 @@
 -export([
     stats/0, stats/1, version/0, get/1, delete/2, set/4, add/4, replace/2,
     replace/4, cas/5, set/2, flush_all/0, flush_all/1, verbosity/1, add/2,
-    cas/3, gets/1, connect/0, connect/1, connect/2, delete/1, disconnect/0
+    cas/3, gets/1, connect/0, connect/1, connect/2, delete/1, disconnect/0,
+    append/2, prepend/2
 ]).
 
 %% gen_server callbacks
@@ -174,6 +175,22 @@ replace(Key, Flag, ExpTime, Value) ->
 	    ["STORED"] -> ok;
 	    ["NOT_STORED"] -> not_stored;
 	    RETURN -> RETURN
+	end.
+
+%% @doc Add this data to an existing key after existing data
+append(Key, Value) ->
+	case gen_server2:call(?SERVER, {append, [Key, 0, 0], Value}) of
+	    ["STORED"] -> ok;
+	    ["NOT_STORED"] -> not_stored;
+	    ERROR -> ERROR
+	end.
+
+%% @doc Add this data to an existing key before existing data
+prepend(Key, Value) ->
+	case gen_server2:call(?SERVER, {prepend, [Key, 0, 0], Value}) of
+	    ["STORED"] -> ok;
+	    ["NOT_STORED"] -> not_stored;
+	    ERROR -> ERROR
 	end.
 
 %% @doc Store a key/value pair if possible.
