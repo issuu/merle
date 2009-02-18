@@ -53,7 +53,7 @@
     stats/0, stats/1, version/0, get/1, delete/2, set/4, add/4, replace/2,
     replace/4, cas/5, set/2, flush_all/0, flush_all/1, verbosity/1, add/2,
     cas/3, gets/1, connect/0, connect/1, connect/2, delete/1, disconnect/0,
-    append/2, prepend/2
+    append/2, prepend/2, quit/0, incr/2, decr/2
 ]).
 
 %% gen_server callbacks
@@ -209,6 +209,20 @@ cas(Key, Flag, ExpTime, CasUniq, Value) ->
 	    ["NOT_STORED"] -> not_stored;
 	    RETURN -> RETURN
 	end.
+
+%% @doc in-place increment of integers
+incr(Key, Value) ->
+    case gen_server2:call(?SERVER, {incr, [Key, Value]}) of
+        ["NOT_FOUND"] -> not_found;
+        [Int] -> list_to_integer(Int)
+    end.
+
+%% @doc in-place decrement of integers
+decr(Key, Value) ->
+    case gen_server2:call(?SERVER, {decr, [Key, Value]}) of
+        ["NOT_FOUND"] -> not_found;
+        [Int] -> list_to_integer(Int)
+    end.
 
 %% @doc connect to memcached with defaults
 connect() ->
