@@ -238,7 +238,11 @@ connect(Host, Port) ->
 
 %% @doc disconnect from memcached
 disconnect() ->
-	gen_server2:call(?SERVER, stop),
+    quit().
+
+%% @doc disconnect from memcached
+quit() ->
+	gen_server2:call(?SERVER, quit),
 	ok.
 
 %% @private
@@ -249,8 +253,8 @@ start_link(Host, Port) ->
 init([Host, Port]) ->
     gen_tcp:connect(Host, Port, ?TCP_OPTS).
 
-handle_call(stop, _From, Socket) ->
-    {stop, requested_disconnect, Socket};
+handle_call(quit, _From, Socket) ->
+    {stop, requested_disconnect, quit, Socket};
 
 handle_call({Cmd}, _From, Socket) when is_atom(Cmd) ->
     Reply = send_generic_cmd(Socket, Cmd),
