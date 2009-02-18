@@ -1,9 +1,9 @@
 merle : An erlang based memcached client.
 
-Version : 0.2
+Version : 0.3
 
 Author : Joe Williams <joe@joetify.com>
-Contributors : Nick Gerakines <nick@gerakines.net>
+Contributors : Nick Gerakines <nick@gerakines.net>, Attila Babo <attila.babo@gmail.com>
 
 Info : http://github.com/joewilliams/merle/
 
@@ -12,10 +12,18 @@ merle uses LShift's gen_server2 module/behavior for faster message queues.
 
 This code is available as Open Source Software under the MIT license.
 
-
 Features:
-* Support for stats, version, getkey, getskey, delete, set, add, replace, cas, flushall, verbosity
+* Support for stats, version, get, gets, delete, set, add, replace, cas, append, prepend, incr, decr, flush_all, verbosity
 
+Changes:
+
+0.3
+This version implements the full 1.2.6 memcached specification but changed the return values
+significantly since 0.2, it's not a drop-in replacement. Before each Erlang term was transfered
+to and from binary by the library, all usage was transparent but limited. Commands like append,
+prepend, incr, decr were impossible to implement because of the special binary format but even
+retrieving more then a single key value at a time was not feasible. After the breaking changes
+all these possible but with a compromise.
 
 Usage:
 
@@ -34,20 +42,28 @@ Set your own:
 
 > merle:set(a, asdf).
 ok
-> merle:getkey(a).
-asdf
+> merle:get(a).
+[{{<<"a">>,0},<<"asdf">>}]]
 
 > merle:set(a, asdf).
 ok
-> merle:getskey(a).
-[4,asdf]
+> merle:gets(a).
+[{{<<"a">>,0,4},<<"asdf">>}]
 > merle:cas(a, 4, asdfasdf).
 ok
 > merle:getskey(a).
-[5,asdfasdf]
+[{{<<"a">>,0,5},<<"asdf">>}]
 
 > merle:delete(a).
 ok
+
+> merle:set(a, 1), merle:set(b, "hi"), merle:set(c, {"answer", 42}).
+ok
+> merle:get([a,b,c]).
+[{{<<"a">>,0},<<"1">>},
+ {{<<"b">>,0},<<"hi">>},
+ {{<<"c">>,0},
+  <<131,104,2,107,0,6,97,110,115,119,101,114,97,42>>}]
 
 * Informational commands *
 
