@@ -49,9 +49,9 @@
 
 %% gen_server API
 -export([
-    stats/0, stats/1, version/0, getkey/1, delete/2, set/4, add/4, replace/2,
-    replace/4, cas/5, set/2, flushall/0, flushall/1, verbosity/1, add/2,
-    cas/3, getskey/1, connect/0, connect/1, connect/2, delete/1, disconnect/0
+    stats/0, stats/1, version/0, get/1, delete/2, set/4, add/4, replace/2,
+    replace/4, cas/5, set/2, flush_all/0, flush_all/1, verbosity/1, add/2,
+    cas/3, gets/1, connect/0, connect/1, connect/2, delete/1, disconnect/0
 ]).
 
 %% gen_server callbacks
@@ -65,68 +65,48 @@ stats() ->
 	gen_server2:call(?SERVER, {stats}).
 
 %% @doc retrieve memcached stats based on args
-stats(Args) when is_atom(Args)->
-	stats(atom_to_list(Args));
 stats(Args) ->
-	gen_server2:call(?SERVER, {stats, {Args}}).
+	gen_server2:call(?SERVER, {stats, Args}).
 
 %% @doc retrieve memcached version
 version() ->
-	gen_server2:call(?SERVER, {version}).
+	gen_server2:call(?SERVER, [version]).
 
 %% @doc set the verbosity level of the logging output
-verbosity(Args) when is_integer(Args) ->
-	verbosity(integer_to_list(Args));
-verbosity(Args)->
-	case gen_server2:call(?SERVER, {verbosity, {Args}}) of
+verbosity(Arg) when is_integer(Arg) ->
+	case gen_server2:call(?SERVER, {verbosity, [Arg]}) of
 		["OK"] -> ok;
 		RETURN -> RETURN
 	end.
 
 %% @doc invalidate all existing items immediately
-flushall() ->
-	case gen_server2:call(?SERVER, {flushall}) of
+flush_all() ->
+	case gen_server2:call(?SERVER, {flush_all}) of
 		["OK"] -> ok;
 		RETURN -> RETURN
 	end.
 
 %% @doc invalidate all existing items based on the expire time argument
-flushall(Delay) when is_integer(Delay) ->
-	flushall(integer_to_list(Delay));
-flushall(Delay) ->
-	case gen_server2:call(?SERVER, {flushall, {Delay}}) of
+flush_all(Delay) when is_integer(Delay) ->
+	case gen_server2:call(?SERVER, {flush_all, [Delay]}) of
 		["OK"] -> ok;
 		RETURN -> RETURN
 	end.
 
 %% @doc retrieve value based off of key
-getkey(Key) when is_atom(Key) ->
-	getkey(atom_to_list(Key));
-getkey(Key) ->
-	case gen_server2:call(?SERVER, {getkey,{Key}}) of
-	    ["END"] -> undefined;
-	    RETURN -> RETURN
-	end.
+get(Key) ->
+    gen_server2:call(?SERVER, {get, Key}).
 
 %% @doc retrieve value based off of key for use with cas
-getskey(Key) when is_atom(Key) ->
-	getskey(atom_to_list(Key));
-getskey(Key) ->
-	case gen_server2:call(?SERVER, {getskey,{Key}}) of
-	    ["END"] -> undefined;
-	    RETURN -> RETURN
-	end.
+gets(Key) ->
+	gen_server2:call(?SERVER, {gets, Key}).
 
 %% @doc delete a key
 delete(Key) ->
 	delete(Key, "0").
 
-delete(Key, Time) when is_atom(Key) ->
-	delete(atom_to_list(Key), Time);
-delete(Key, Time) when is_integer(Time) ->
-	delete(Key, integer_to_list(Time));
 delete(Key, Time) ->
-	case gen_server2:call(?SERVER, {delete, {Key, Time}}) of
+	case gen_server2:call(?SERVER, {delete, [Key, Time]}) of
 		["DELETED"] -> ok;
 		["NOT_FOUND"] -> not_found;
 		RETURN -> RETURN
@@ -159,14 +139,8 @@ set(Key, Value) ->
     Flag = random:uniform(?RANDOM_MAX),
     set(Key, integer_to_list(Flag), "0", Value).
 
-set(Key, Flag, ExpTime, Value) when is_atom(Key) ->
-	set(atom_to_list(Key), Flag, ExpTime, Value);
-set(Key, Flag, ExpTime, Value) when is_integer(Flag) ->
-    set(Key, integer_to_list(Flag), ExpTime, Value);
-set(Key, Flag, ExpTime, Value) when is_integer(ExpTime) ->
-    set(Key, Flag, integer_to_list(ExpTime), Value);
 set(Key, Flag, ExpTime, Value) ->
-	case gen_server2:call(?SERVER, {set, {Key, Flag, ExpTime, Value}}) of
+	case gen_server2:call(?SERVER, {set, [Key, Flag, ExpTime], Value}) of
 	    ["STORED"] -> ok;
 	    ["NOT_STORED"] -> not_stored;
 	    RETURN -> RETURN
@@ -177,14 +151,8 @@ add(Key, Value) ->
 	Flag = random:uniform(?RANDOM_MAX),
 	add(Key, integer_to_list(Flag), "0", Value).
 
-add(Key, Flag, ExpTime, Value) when is_atom(Key) ->
-	add(atom_to_list(Key), Flag, ExpTime, Value);
-add(Key, Flag, ExpTime, Value) when is_integer(Flag) ->
-    add(Key, integer_to_list(Flag), ExpTime, Value);
-add(Key, Flag, ExpTime, Value) when is_integer(ExpTime) ->
-    add(Key, Flag, integer_to_list(ExpTime), Value);
 add(Key, Flag, ExpTime, Value) ->
-	case gen_server2:call(?SERVER, {add, {Key, Flag, ExpTime, Value}}) of
+	case gen_server2:call(?SERVER, {add, [Key, Flag, ExpTime], Value}) of
 	    ["STORED"] -> ok;
 	    ["NOT_STORED"] -> not_stored;
 	    RETURN -> RETURN
@@ -202,7 +170,7 @@ replace(Key, Flag, ExpTime, Value) when is_integer(Flag) ->
 replace(Key, Flag, ExpTime, Value) when is_integer(ExpTime) ->
     replace(Key, Flag, integer_to_list(ExpTime), Value);
 replace(Key, Flag, ExpTime, Value) ->
-	case gen_server2:call(?SERVER, {replace, {Key, Flag, ExpTime, Value}}) of
+	case gen_server2:call(?SERVER, {replace, [Key, Flag, ExpTime], Value}) of
 	    ["STORED"] -> ok;
 	    ["NOT_STORED"] -> not_stored;
 	    RETURN -> RETURN
@@ -222,7 +190,7 @@ cas(Key, Flag, ExpTime, CasUniq, Value) when is_integer(ExpTime) ->
 cas(Key, Flag, ExpTime, CasUniq, Value) when is_integer(CasUniq) ->
     cas(Key, Flag, ExpTime, integer_to_list(CasUniq), Value);
 cas(Key, Flag, ExpTime, CasUniq, Value) ->
-	case gen_server2:call(?SERVER, {cas, {Key, Flag, ExpTime, CasUniq, Value}}) of
+	case gen_server2:call(?SERVER, {cas, [Key, Flag, ExpTime, CasUniq], Value}) of
 	    ["STORED"] -> ok;
 	    ["NOT_STORED"] -> not_stored;
 	    RETURN -> RETURN
@@ -242,7 +210,7 @@ connect(Host, Port) ->
 
 %% @doc disconnect from memcached
 disconnect() ->
-	gen_server2:call(?SERVER, {stop}),
+	gen_server2:call(?SERVER, stop),
 	ok.
 
 %% @private
@@ -253,96 +221,19 @@ start_link(Host, Port) ->
 init([Host, Port]) ->
     gen_tcp:connect(Host, Port, ?TCP_OPTS).
 
-handle_call({stop}, _From, Socket) ->
+handle_call(stop, _From, Socket) ->
     {stop, requested_disconnect, Socket};
 
-handle_call({stats}, _From, Socket) ->
-    Reply = send_generic_cmd(Socket, iolist_to_binary([<<"stats">>])),
+handle_call({Cmd}, _From, Socket) when is_atom(Cmd) ->
+    Reply = send_generic_cmd(Socket, Cmd),
     {reply, Reply, Socket};
 
-handle_call({stats, {Args}}, _From, Socket) ->
-    Reply = send_generic_cmd(Socket, iolist_to_binary([<<"stats ">>, Args])),
+handle_call({Cmd, Args}, _From, Socket) when is_atom(Cmd) ->
+    Reply = send_generic_cmd(Socket, Cmd, Args),
     {reply, Reply, Socket};
 
-handle_call({version}, _From, Socket) ->
-    Reply = send_generic_cmd(Socket, iolist_to_binary([<<"version">>])),
-    {reply, Reply, Socket};
-
-handle_call({verbosity, {Args}}, _From, Socket) ->
-    Reply = send_generic_cmd(Socket, iolist_to_binary([<<"verbosity ">>, Args])),
-    {reply, Reply, Socket};
-
-handle_call({flushall}, _From, Socket) ->
-    Reply = send_generic_cmd(Socket, iolist_to_binary([<<"flush_all">>])),
-    {reply, Reply, Socket};
-
-handle_call({flushall, {Delay}}, _From, Socket) ->
-    Reply = send_generic_cmd(Socket, iolist_to_binary([<<"flush_all ">>, Delay])),
-    {reply, Reply, Socket};
-
-handle_call({getkey, {Key}}, _From, Socket) ->
-    Reply = send_get_cmd(Socket, iolist_to_binary([<<"get ">>, Key])),
-    {reply, Reply, Socket};
-
-handle_call({getskey, {Key}}, _From, Socket) ->
-    Reply = send_get_cmd(Socket, iolist_to_binary([<<"gets ">>, Key])),
-    {reply, Reply, Socket};
-
-handle_call({delete, {Key, Time}}, _From, Socket) ->
-    Reply = send_generic_cmd(
-        Socket,
-        iolist_to_binary([<<"delete ">>, Key, <<" ">>, Time])
-    ),
-    {reply, Reply, Socket};
-
-handle_call({set, {Key, Flag, ExpTime, Value}}, _From, Socket) ->
-	Bin = to_binary(Value),
-	Bytes = integer_to_list(size(Bin)),
-    Reply = send_storage_cmd(
-        Socket,
-        iolist_to_binary([
-            <<"set ">>, Key, <<" ">>, Flag, <<" ">>, ExpTime, <<" ">>, Bytes
-        ]),
-        Bin
-    ),
-    {reply, Reply, Socket};
-
-handle_call({add, {Key, Flag, ExpTime, Value}}, _From, Socket) ->
-	Bin = to_binary(Value),
-	Bytes = integer_to_list(size(Bin)),
-    Reply = send_storage_cmd(
-        Socket,
-        iolist_to_binary([
-            <<"add ">>, Key, <<" ">>, Flag, <<" ">>, ExpTime, <<" ">>, Bytes
-        ]),
-        Bin
-    ),
-    {reply, Reply, Socket};
-
-handle_call({replace, {Key, Flag, ExpTime, Value}}, _From, Socket) ->
-	Bin = to_binary(Value),
-	Bytes = integer_to_list(size(Bin)),
-    Reply = send_storage_cmd(
-        Socket,
-        iolist_to_binary([
-            <<"replace ">>, Key, <<" ">>, Flag, <<" ">>, ExpTime, <<" ">>,
-            Bytes
-        ]),
-    	Bin
-    ),
-    {reply, Reply, Socket};
-
-handle_call({cas, {Key, Flag, ExpTime, CasUniq, Value}}, _From, Socket) ->
-	Bin = to_binary(Value),
-	Bytes = integer_to_list(size(Bin)),
-    Reply = send_storage_cmd(
-        Socket,
-        iolist_to_binary([
-            <<"cas ">>, Key, <<" ">>, Flag, <<" ">>, ExpTime, <<" ">>, Bytes,
-            <<" ">>, CasUniq
-        ]),
-        Bin
-    ),
+handle_call({Cmd, Args, Value}, _From, Socket) when is_atom(Cmd) ->
+    Reply = send_generic_cmd(Socket, Cmd, Args, to_binary(Value)),
     {reply, Reply, Socket}.
 
 %% @private
@@ -361,17 +252,46 @@ terminate(_Reason, Socket) ->
     ok.
 
 %% @private
-%% @doc send_generic_cmd/2 function for simple informational and deletion commands
-send_generic_cmd(Socket, Cmd) ->
-    gen_tcp:send(Socket, <<Cmd/binary, "\r\n">>),
-    recv_simple_reply(Socket).
+%% @doc format command in memcached style, add spaces and closing \r\n
+cmd_format(Cmd) when is_list(Cmd) ->
+    cmd_format(Cmd, []);
+cmd_format(Cmd) when is_atom(Cmd) ->
+    cmd_format([Cmd], []).
+
+cmd_format([], []) ->
+    <<>>;
+cmd_format([], Ready) ->
+    iolist_to_binary(lists:reverse([$\n, $\r | tl(Ready)]));
+cmd_format([H|T], Ready) when is_atom(H) ->
+    cmd_format(T, [$\s, atom_to_list(H) | Ready]);
+cmd_format([H|T], Ready) when is_integer(H) ->
+    cmd_format(T, [$\s, integer_to_list(H) | Ready]);
+cmd_format([H|T], Ready) when is_list(H); is_binary(H) ->
+    cmd_format(T, [$\s, H | Ready]).
 
 %% @private
-%% @doc send_storage_cmd/3 funtion for storage commands
-send_storage_cmd(Socket, Cmd, Value) ->
-    gen_tcp:send(Socket, <<Cmd/binary, "\r\n">>),
-    gen_tcp:send(Socket, <<Value/binary, "\r\n">>),
+%% @doc generic function to send commands with optional arguments and value
+send_generic_cmd(Socket, Cmd) ->
+    gen_tcp:send(Socket, cmd_format(Cmd)),
     recv_simple_reply(Socket).
+
+send_generic_cmd(Socket, Cmd, Args) when is_list(Args) ->
+    gen_tcp:send(Socket, cmd_format([Cmd | Args])),
+    case Cmd =:= get orelse Cmd =:= gets of
+        true -> recv_complex_reply(Socket);
+        false -> recv_simple_reply(Socket)
+    end;
+send_generic_cmd(Socket, Cmd, Args) ->
+    send_generic_cmd(Socket, Cmd, [Args]).
+
+send_generic_cmd(Socket, Cmd, Args, Value) when is_list(Args), is_binary(Value) ->
+    Bytes = size(Value),
+    {A, B} = lists:split(3, Args),
+    gen_tcp:send(Socket, cmd_format([Cmd | A ++ [Bytes | B]])),
+    gen_tcp:send(Socket, <<Value/binary, "\r\n">>),
+    recv_simple_reply(Socket);
+send_generic_cmd(Socket, Cmd, Args, Value) ->
+    send_generic_cmd(Socket, Cmd, [Args], Value).
 
 %% @private
 %% @doc receive function for simple responses (not containing VALUEs)
@@ -384,19 +304,13 @@ recv_simple_reply(Socket) ->
     end.
 
 %% @private
-%% @doc send_get_cmd/2 function for retreival commands
-send_get_cmd(Socket, Cmd) ->
-    gen_tcp:send(Socket, <<Cmd/binary, "\r\n">>),
-	recv_complex_get_reply(Socket).
-
-%% @private
 %% @doc receive function for respones containing VALUEs
-recv_complex_get_reply(Socket) ->
-    recv_complex_get_reply(socket_reader:wrap(Socket), []).
+recv_complex_reply(Socket) ->
+    recv_complex_reply(socket_reader:wrap(Socket), []).
 
-recv_complex_get_reply({_, SocketReader}, Tail) ->
-    recv_complex_get_reply(SocketReader, Tail);
-recv_complex_get_reply(SocketReader, Tail) when is_function(SocketReader) ->
+recv_complex_reply({_, SocketReader}, Tail) ->
+    recv_complex_reply(SocketReader, Tail);
+recv_complex_reply(SocketReader, Tail) when is_function(SocketReader) ->
     case SocketReader(peek) of
         {<<"END\r\n">>, _} ->
             lists:reverse(Tail);
@@ -413,9 +327,9 @@ recv_complex_get_reply(SocketReader, Tail) when is_function(SocketReader) ->
                             ], Match),
                     {_, Cont_2} = Cont_1({take, Skip}),
                     {Data, Cont_3} = Cont_2({take, Len}),
-                    recv_complex_get_reply(Cont_3({take, 2}), [{list_to_tuple([Key, Flag | CAS]), Data} | Tail]);
+                    recv_complex_reply(Cont_3({take, 2}), [{list_to_tuple([Key, Flag | CAS]), Data} | Tail]);
                 _ ->
-                    recv_complex_get_reply(Cont_1(more), Tail)
+                    recv_complex_reply(Cont_1(more), Tail)
             end;
         Error -> Error
     end.
