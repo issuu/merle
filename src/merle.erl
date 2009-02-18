@@ -44,7 +44,7 @@
 -define(DEFAULT_HOST, "localhost").
 -define(DEFAULT_PORT, 11211).
 -define(TCP_OPTS, [
-    binary, {packet, raw}, {nodelay, true},{reuseaddr, true}, {active, true}
+    binary, {packet, raw}, {nodelay, true},{reuseaddr, true}, {active, false}
 ]).
 
 %% gen_server API
@@ -285,8 +285,8 @@ handle_call({getkey, {Key}}, _From, Socket) ->
     {reply, Reply, Socket};
 
 handle_call({getskey, {Key}}, _From, Socket) ->
-    Reply = send_gets_cmd(Socket, iolist_to_binary([<<"gets ">>, Key])),
-    {reply, [Reply], Socket};
+    Reply = send_get_cmd(Socket, iolist_to_binary([<<"gets ">>, Key])),
+    {reply, Reply, Socket};
 
 handle_call({delete, {Key, Time}}, _From, Socket) ->
     Reply = send_generic_cmd(
@@ -364,98 +364,60 @@ terminate(_Reason, Socket) ->
 %% @doc send_generic_cmd/2 function for simple informational and deletion commands
 send_generic_cmd(Socket, Cmd) ->
     gen_tcp:send(Socket, <<Cmd/binary, "\r\n">>),
-	Reply = recv_simple_reply(),
-	Reply.
+    recv_simple_reply(Socket).
 
 %% @private
 %% @doc send_storage_cmd/3 funtion for storage commands
 send_storage_cmd(Socket, Cmd, Value) ->
     gen_tcp:send(Socket, <<Cmd/binary, "\r\n">>),
     gen_tcp:send(Socket, <<Value/binary, "\r\n">>),
-    Reply = recv_simple_reply(),
-   	Reply.
+    recv_simple_reply(Socket).
+
+%% @private
+%% @doc receive function for simple responses (not containing VALUEs)
+recv_simple_reply(Socket) ->
+    case gen_tcp:recv(Socket, 0, ?TIMEOUT) of
+	  	{ok, Data} ->
+        	string:tokens(binary_to_list(Data), "\r\n");
+        Error ->
+  			Error
+    end.
 
 %% @private
 %% @doc send_get_cmd/2 function for retreival commands
 send_get_cmd(Socket, Cmd) ->
     gen_tcp:send(Socket, <<Cmd/binary, "\r\n">>),
-	Reply = recv_complex_get_reply(Socket),
-	Reply.
-
-%% @private
-%% @doc send_gets_cmd/2 function for cas retreival commands
-send_gets_cmd(Socket, Cmd) ->
-    gen_tcp:send(Socket, <<Cmd/binary, "\r\n">>),
-	Reply = recv_complex_gets_reply(Socket),
-	Reply.
-
-%% @private
-%% @doc receive function for simple responses (not containing VALUEs)
-recv_simple_reply() ->
-	receive
-	  	{tcp,_,Data} ->
-        	string:tokens(binary_to_list(Data), "\r\n");
-        {error, closed} ->
-  			connection_closed
-    after ?TIMEOUT -> timeout
-    end.
+	recv_complex_get_reply(Socket).
 
 %% @private
 %% @doc receive function for respones containing VALUEs
 recv_complex_get_reply(Socket) ->
-	receive
-		%% For receiving get responses where the key does not exist
-		{tcp, Socket, <<"END\r\n">>} -> ["END"];
-		%% For receiving get responses containing data
-		{tcp, Socket, Data} ->
-			%% Reply format <<"VALUE SOMEKEY FLAG BYTES\r\nSOMEVALUE\r\nEND\r\n">>
-  			Parse = io_lib:fread("~s ~s ~u ~u\r\n", binary_to_list(Data)),
-  			{ok,[_,_,_,Bytes], ListBin} = Parse,
-  			Bin = list_to_binary(ListBin),
-  			Reply = get_data(Socket, Bin, Bytes, length(ListBin)),
-  			[Reply];
-  		{error, closed} ->
-  			connection_closed
-    after ?TIMEOUT -> timeout
-    end.
+    recv_complex_get_reply(socket_reader:wrap(Socket), []).
 
-%% @private
-%% @doc receive function for cas responses containing VALUEs
-recv_complex_gets_reply(Socket) ->
-	receive
-		%% For receiving get responses where the key does not exist
-		{tcp, Socket, <<"END\r\n">>} -> ["END"];
-		%% For receiving get responses containing data
-		{tcp, Socket, Data} ->
-			%% Reply format <<"VALUE SOMEKEY FLAG BYTES\r\nSOMEVALUE\r\nEND\r\n">>
-  			Parse = io_lib:fread("~s ~s ~u ~u ~u\r\n", binary_to_list(Data)),
-  			{ok,[_,_,_,Bytes,CasUniq], ListBin} = Parse,
-  			Bin = list_to_binary(ListBin),
-  			Reply = get_data(Socket, Bin, Bytes, length(ListBin)),
-  			[CasUniq, Reply];
-  		{error, closed} ->
-  			connection_closed
-    after ?TIMEOUT -> timeout
-    end.
-
-%% @private
-%% @doc recieve loop to get all data
-get_data(Socket, Bin, Bytes, Len) when Len < Bytes + 7->
-    receive
-        {tcp, Socket, Data} ->
-            Combined = <<Bin/binary, Data/binary>>,
-            get_data(Socket, Combined, Bytes, size(Combined));
-     	{error, closed} ->
-  			connection_closed
-        after ?TIMEOUT -> timeout
-    end;
-get_data(_, Data, Bytes, _) ->
-	<<Bin:Bytes/binary, "\r\nEND\r\n">> = Data,
-    try
-        binary_to_term(Bin)
-    catch
-        _:_ ->
-            Bin
+recv_complex_get_reply({_, SocketReader}, Tail) ->
+    recv_complex_get_reply(SocketReader, Tail);
+recv_complex_get_reply(SocketReader, Tail) when is_function(SocketReader) ->
+    case SocketReader(peek) of
+        {<<"END\r\n">>, _} ->
+            lists:reverse(Tail);
+        {RCV, Cont_1} when is_binary(RCV), is_function(Cont_1) ->
+            case re:run(RCV, "VALUE (\\w+) (\\d+) (\\d+)\s?(\\d+)?", [{capture, all, list}]) of
+                {match, Match} ->
+                    [Skip, Key, Flag, Len | CAS] =
+                        zipf(
+                            [fun(X) -> length(X)+2 end
+                            ,fun list_to_binary/1
+                            ,fun list_to_integer/1
+                            ,fun list_to_integer/1
+                            ,fun list_to_integer/1
+                            ], Match),
+                    {_, Cont_2} = Cont_1({take, Skip}),
+                    {Data, Cont_3} = Cont_2({take, Len}),
+                    recv_complex_get_reply(Cont_3({take, 2}), [{list_to_tuple([Key, Flag | CAS]), Data} | Tail]);
+                _ ->
+                    recv_complex_get_reply(Cont_1(more), Tail)
+            end;
+        Error -> Error
     end.
 
 %% @private
@@ -464,3 +426,14 @@ to_binary(X) when is_binary(X) ->
     X;
 to_binary(X) ->
     term_to_binary(X).
+
+%% @private
+%% @doc apply a list of functions on a list of values, returns the resulting list
+%% @doc list should be different lenght
+zipf(F, V) when is_list(F), is_list(V) ->
+    lists:reverse(zipf(F, V, [])).
+
+zipf([], _, T) -> T;
+zipf(_, [], T) -> T;
+zipf([F|FT], [V|VT], T) ->
+    zipf(FT, VT, [F(V) | T]).
