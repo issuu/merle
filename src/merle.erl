@@ -53,7 +53,7 @@
     stats/0, stats/1, version/0, get/1, delete/2, set/4, add/4, replace/2,
     replace/4, cas/5, set/2, flush_all/0, flush_all/1, verbosity/1, add/2,
     cas/3, gets/1, connect/0, connect/1, connect/2, delete/1, disconnect/0,
-    append/2, prepend/2, quit/0, incr/2, decr/2
+    append/2, prepend/2, quit/0, incr/1, decr/1, incr/2, decr/2
 ]).
 
 %% gen_server callbacks
@@ -223,6 +223,14 @@ decr(Key, Value) ->
         ["NOT_FOUND"] -> not_found;
         [Int] -> list_to_integer(Int)
     end.
+
+%% @doc convenience function to increment an existing integer by one
+incr(Key) ->
+    incr(Key, 1).
+
+%% @doc convenience function to decrement an existing integer by one
+decr(Key) ->
+    decr(Key, 1).
 
 %% @doc connect to memcached with defaults
 connect() ->
