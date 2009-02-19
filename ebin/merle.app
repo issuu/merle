@@ -1,14 +1,14 @@
 {application, merle,
     [   {description, "memcached client"},
         {vsn, "0.3"},
-        {modules,  [
-            ,merle
+        {modules,
+            [merle
             ,gen_server2
             ,socket_reader
             ]},
-        {registered, [feed]},
-        {applications, [
-            kernel,
-            stdlib,
+        {registered, [merle]},
+        {applications,
+            [kernel
+            ,stdlib
             ]},
         {mod, {merle, []}}]}.
