@@ -97,11 +97,11 @@ flush_all(Delay) when is_integer(Delay) ->
 
 %% @doc retrieve value based off of key
 get(Key) ->
-    gen_server2:call(?SERVER, {get, Key}).
+    gen_server2:call(?SERVER, {get, [Key]}).
 
 %% @doc retrieve value based off of key for use with cas
 gets(Key) ->
-	gen_server2:call(?SERVER, {gets, Key}).
+	gen_server2:call(?SERVER, {gets, [Key]}).
 
 %% @doc delete a key
 delete(Key) ->
@@ -385,7 +385,7 @@ to_binary(X) when is_list(X) ->
 to_binary(X) when is_integer(X) ->
     to_binary(integer_to_list(X));
 to_binary(X) when is_atom(X) ->
-    atom_to_list(X);
+    list_to_binary(atom_to_list(X));
 to_binary(X) ->
     term_to_binary(X).
 
