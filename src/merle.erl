@@ -357,7 +357,7 @@ recv_complex_reply(SocketReader, Tail) when is_function(SocketReader) ->
         {<<"END\r\n">>, _} ->
             lists:reverse(Tail);
         {RCV, Cont_1} when is_binary(RCV), is_function(Cont_1) ->
-            case re:run(RCV, "VALUE (\\w+) (\\d+) (\\d+)\s?(\\d+)?", [{capture, all, list}]) of
+            case re:run(RCV, "VALUE ([^[:space:][:cntrl:]]+) (\\d+) (\\d+)\s?(\\d+)?", [{capture, all, list}]) of
                 {match, Match} ->
                     [Skip, Key, Flag, Len | CAS] =
                         zipf(
