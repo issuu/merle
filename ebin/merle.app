@@ -3,12 +3,12 @@
         {vsn, "0.3"},
         {modules,
             [merle
-            ,gen_server2
             ,socket_reader
             ]},
         {registered, [merle]},
         {applications,
             [kernel
             ,stdlib
+            ,gen_server2
             ]},
         {mod, {merle, []}}]}.
